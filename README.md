@@ -3,8 +3,7 @@
 Turn a YouTube URL into a clean plain-text transcript with one command.
 
 ```console
-$ stitch-youtube-vtt 'https://www.youtube.com/watch?v=VIDEO_ID'
-/current/directory/VIDEO_ID-transcript.txt
+$ stitch-youtube-vtt 'https://www.youtube.com/watch?v=VIDEO_ID' transcript_title.txt
 ```
 
 The tool uses [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) to download an
