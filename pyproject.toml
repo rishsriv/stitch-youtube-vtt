@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stitch-youtube-vtt"
+version = "0.1.0"
+description = "Download YouTube captions and turn rolling WebVTT cues into clean plain-text transcripts."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{ name = "Rishabh Srivastava" }]
+keywords = ["youtube", "captions", "transcript", "webvtt", "yt-dlp"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Video",
+  "Topic :: Text Processing",
+]
+dependencies = ["yt-dlp>=2025.1.15"]
+
+[project.urls]
+Homepage = "https://github.com/rishsriv/stitch-youtube-vtt"
+Repository = "https://github.com/rishsriv/stitch-youtube-vtt"
+Issues = "https://github.com/rishsriv/stitch-youtube-vtt/issues"
+
+[project.scripts]
+stitch-youtube-vtt = "stitch_youtube_vtt.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stitch_youtube_vtt"]
