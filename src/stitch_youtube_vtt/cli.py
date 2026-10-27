@@ -18,6 +18,19 @@ TIMING_LINE = re.compile(
 )
 INLINE_TAG = re.compile(r"<[^>]+>")
 SPACE = re.compile(r"\s+")
+WORD = re.compile(r"[A-Za-z0-9$][A-Za-z0-9&.'’$-]*")
+DOTTED_ACRONYM = re.compile(r"(?:[A-Za-z]\.){2,}")
+# Uppercase tokens that should survive sentence-casing of all-caps captions.
+ACRONYMS = {
+    "AI", "API", "CEO", "CFO", "CIO", "COO", "CPI", "CTO", "EPS", "ESG", "ETF",
+    "EU", "FBI", "FOMC", "GDP", "IMF", "IPO", "IRS", "NASA", "NASDAQ", "NATO",
+    "NBA", "NFL", "NYSE", "OK", "OPEC", "PCE", "SEC", "TV", "UK", "UN", "USA",
+}
+CAPITALIZED = {
+    "january", "february", "april", "june", "july", "august",
+    "september", "october", "november", "december", "monday", "tuesday",
+    "wednesday", "thursday", "friday", "saturday", "sunday",
+}
 
 
 def seconds(timestamp: str) -> float:
@@ -103,6 +116,54 @@ def stitch(chunks: list[tuple[float, float, str]]) -> str:
     return "\n\n".join(paragraphs)
 
 
+def is_mostly_uppercase(text: str, threshold: float = 0.9) -> bool:
+    """Detect broadcast-style captions that are written entirely in capitals."""
+    letters = [char for char in text if char.isalpha()]
+    if len(letters) < 20:
+        return False
+    return sum(char.isupper() for char in letters) / len(letters) >= threshold
+
+
+def case_part(part: str) -> str:
+    stem = re.split(r"['’]", part, maxsplit=1)[0]
+    suffix = part[len(stem) :].lower()
+    if (
+        stem.upper() in ACRONYMS
+        or stem.upper() == "I"
+        or re.search(r"\d|&", stem)
+        or DOTTED_ACRONYM.fullmatch(stem)
+    ):
+        return stem.upper() + suffix
+    if stem.lower() in CAPITALIZED:
+        return stem.capitalize() + suffix
+    return part.lower()
+
+
+def sentence_case(text: str) -> str:
+    """Convert all-caps caption text into sentence case."""
+
+    def replace(match: re.Match[str]) -> str:
+        nonlocal capitalize
+        word = match.group()
+        cased = "-".join(case_part(part) for part in word.split("-"))
+        if capitalize:
+            cased = cased[:1].upper() + cased[1:]
+        following = text[match.end() :].split(maxsplit=1)
+        separator = following[0] if following else ""
+        # A trailing period ends a sentence unless it belongs to an acronym
+        # such as "A.I.", which mid-sentence captions use frequently.
+        ends_with_period = word.endswith(".") and not DOTTED_ACRONYM.search(word)
+        capitalize = (
+            ends_with_period
+            or bool(re.match(r"[.!?:]", separator))
+            or text[match.end() : match.end() + 2] == "\n\n"
+        )
+        return cased
+
+    capitalize = True
+    return WORD.sub(replace, text)
+
+
 def is_url(value: str) -> bool:
     parsed = urlparse(value)
     return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
@@ -174,9 +235,12 @@ def write_transcript(
     output_path: Path,
     title: str,
     source: str,
+    keep_case: bool = False,
 ) -> None:
     vtt = caption_path.read_text(encoding="utf-8-sig")
     transcript = stitch(incremental_chunks(vtt))
+    if not keep_case and is_mostly_uppercase(transcript):
+        transcript = sentence_case(transcript)
 
     header = [title]
     if source:
@@ -194,6 +258,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lang", default="en", help="Caption language (default: en)")
     parser.add_argument("--title", help="Override the transcript title")
     parser.add_argument("--source", default="", help="Source URL for local VTT input")
+    parser.add_argument(
+        "--keep-case",
+        action="store_true",
+        help="Do not convert all-caps captions to sentence case",
+    )
     return parser
 
 
@@ -211,6 +280,7 @@ def main() -> None:
                 output,
                 args.title or fetched_title,
                 args.source or fetched_source,
+                args.keep_case,
             )
     else:
         caption_path = Path(args.input).expanduser()
@@ -222,6 +292,7 @@ def main() -> None:
             output,
             args.title or "Transcript",
             args.source,
+            args.keep_case,
         )
 
     print(output.resolve())
