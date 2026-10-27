@@ -95,6 +95,15 @@ stitch-youtube-vtt captions.en.vtt transcript.txt \
   --source 'https://example.com/video'
 ```
 
+### All-caps captions
+
+Some channels upload broadcast-style closed captions written entirely in capital
+letters. When a transcript is almost entirely uppercase, `stitch-youtube-vtt`
+converts it to sentence case while keeping acronyms such as `A.I.`, `S&P`, and
+`Q3` intact. Proper nouns cannot be recovered from all-caps text, so names are
+lowercased apart from sentence starts. Pass `--keep-case` to keep the original
+capitalization.
+
 ### Show all options
 
 ```bash
